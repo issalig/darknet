@@ -15,6 +15,9 @@
 #include <stdint.h>
 #include <assert.h>
 #include <pthread.h>
+#ifdef NNPACK
+#include <nnpack.h>
+#endif
 
 #ifndef LIB_API
 #ifdef LIB_EXPORTS
@@ -725,6 +728,9 @@ typedef struct network {
 #endif
     int optimized_memory;
     size_t workspace_size_limit;
+#ifdef NNPACK
+    pthreadpool_t threadpool;
+#endif
 } network;
 
 // network.h
