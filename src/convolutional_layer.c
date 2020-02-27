@@ -1073,7 +1073,7 @@ size_t binary_transpose_align_input(int k, int n, float *b, char **t_bit_input, 
 void forward_convolutional_layer(convolutional_layer l, network_state state)
 {
     struct nnp_size input_size = { l.w, l.h };
-    struct nnp_padding input_padding = { l.pad, l.pad, l.pad, l.pad };
+    struct nnp_padding input_padding = { l.pad*l.dilation, l.pad*l.dilation, l.pad*l.dilation, l.pad*l.dilation };
     struct nnp_size kernel_size = { l.size, l.size };
     struct nnp_size stride = { l.stride, l.stride };
 
