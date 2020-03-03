@@ -1,6 +1,6 @@
 # Fork with updated mixing from AlexeyAB https://github.com/AlexeyAB/darknet and nnpack support from https://github.com/digitalbrain79/darknet-nnpack
 
-# Main interest is to use NNPACK on non-GPU systems and low CPU, e.g., Raspberry PI and keep it synchronized with generic repo.
+# Main interest is to use NNPACK on non-GPU systems and slow CPU, e.g., Raspberry PI and keep it synchronized with generic repo.
 
 # Yolo-v3 and Yolo-v2 for Windows and Linux
 ### (neural network for object detection) - Tensor Cores can be used on [Linux](https://github.com/AlexeyAB/darknet#how-to-compile-on-linux) and [Windows](https://github.com/AlexeyAB/darknet#how-to-compile-on-windows-using-cmake-gui)
