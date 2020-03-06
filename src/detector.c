@@ -18,6 +18,11 @@ typedef __compar_fn_t comparison_fn_t;
 
 #include "http_stream.h"
 
+int map_epochs;
+int dont_save_weights;
+int *labels;
+int nlabels;
+
 int check_mistakes = 0;
 
 static int coco_ids[] = { 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90 };
@@ -272,7 +277,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         const int iteration = get_current_iteration(net);
         //i = get_current_batch(net);
 
-        int calc_map_for_each = 4 * train_images_num / (net.batch * net.subdivisions);  // calculate mAP for each 4 Epochs
+        int calc_map_for_each = map_epochs * train_images_num / (net.batch * net.subdivisions);  // calculate mAP for each 4 Epochs
+	if (calc_map_for_each  < 1000) calc_map_for_each = 1000; //set minimum
+
         calc_map_for_each = fmax(calc_map_for_each, 100);
         int next_map_calc = iter_map + calc_map_for_each;
         next_map_calc = fmax(next_map_calc, net.burn_in);
@@ -331,7 +338,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                 best_map = mean_average_precision;
                 printf("New best mAP!\n");
                 char buff[256];
-                sprintf(buff, "%s/%s_best.weights", backup_directory, base);
+                sprintf(buff, "%s/%s_%d_%f_best.weights", backup_directory, base, iteration, mean_average_precision);
                 save_weights(net, buff);
             }
 
@@ -349,8 +356,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             if (ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
             char buff[256];
-            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
-            save_weights(net, buff);
+            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);            
+	    if (!dont_save_weights)
+            	save_weights(net, buff);
         }
 
         if (iteration >= (iter_save_last + 100) || iteration % 100 == 0) {
@@ -898,7 +906,7 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
         getchar();
     }
     srand(time(0));
-    printf("\n calculation mAP (mean average precision)...\n");
+    printf("\n calculation mAP (mean average precision)... conf %.2f iou %.2f\n", thresh_calc_avg_iou, iou_thresh);
 
     list *plist = get_paths(valid_images);
     char **paths = (char **)list_to_array(plist);
@@ -959,6 +967,7 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
         thr[t] = load_data_in_thread(args);
     }
     time_t start = time(0);
+    clock_t c0 = clock();
     for (i = nthreads; i < m + nthreads; i += nthreads) {
         fprintf(stderr, "\r%d", i);
         for (t = 0; t < nthreads && (i + t - nthreads) < m; ++t) {
@@ -1198,6 +1207,8 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
 
     double mean_average_precision = 0;
 
+    printf("Using %d mAP points\n",map_points);
+
     for (i = 0; i < classes; ++i) {
         double avg_precision = 0;
 
@@ -1283,7 +1294,13 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
     free(tp_for_thresh_per_class);
     free(fp_for_thresh_per_class);
 
-    fprintf(stderr, "Total Detection Time: %d Seconds\n", (int)(time(0) - start));
+    //fprintf(stderr, "Total Detection Time: %d Seconds\n", (int)(time(0) - start));
+    //clock_t c0 = clock();
+    // ...
+    clock_t c1 = clock();
+    double runtime_diff_ms = (c1 - c0) * 1000. / CLOCKS_PER_SEC;
+    fprintf(stderr, "Total Detection Time: %f Seconds\n", runtime_diff_ms);
+
     printf("\nSet -points flag:\n");
     printf(" `-points 101` for MS COCO \n");
     printf(" `-points 11` for PascalVOC 2007 (uncomment `difficult` in voc.data) \n");
@@ -1685,6 +1702,9 @@ void run_detector(int argc, char **argv)
     // and for recall mode (extended output table-like format with results for best_class fit)
     int ext_output = find_arg(argc, argv, "-ext_output");
     int save_labels = find_arg(argc, argv, "-save_labels");
+    map_epochs = find_int_arg(argc, argv, "-map_epochs", 4);
+    dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
+
     if (argc < 4) {
         fprintf(stderr, "usage: %s %s [train/test/valid/demo/map] [data] [cfg] [weights (optional)]\n", argv[0], argv[1]);
         return;
@@ -1712,6 +1732,34 @@ void run_detector(int argc, char **argv)
         gpus = &gpu;
         ngpus = 1;
     }
+
+//use only labels from command line, they will be assigned to 0, ... n-1 numbe of labels
+//for example 0,4,6,7 will rename classes 0,4,6,7 to 0,1,2,3 and only 4 classes will be used
+
+    char *label_list = find_char_arg(argc, argv, "-relabel", 0);
+    int label = 0;
+    if (label_list) {
+        printf("Label list %s\n", label_list);
+        int len = strlen(label_list);
+        nlabels = 1;
+        int i;
+        for (i = 0; i < len; ++i) {
+            if (label_list[i] == ',') ++nlabels;
+        }
+        labels = (int*)calloc(nlabels, sizeof(int));
+        for (i = 0; i < nlabels; ++i) {
+            labels[i] = atoi(label_list);
+            label_list = strchr(label_list, ',') + 1;
+            printf("%d ", labels[i]);
+        }
+        printf("\n");
+    } else {
+        labels=(int*)calloc(1, sizeof(int));
+        labels[0]=-1; //all labels
+        printf("Using all labels\n");
+    }
+
+
 
     int clear = find_arg(argc, argv, "-clear");
 
