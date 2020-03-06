@@ -18,8 +18,9 @@ typedef __compar_fn_t comparison_fn_t;
 
 #include "http_stream.h"
 
-int map_epochs;
-int dont_save_weights;
+int map_epochs=4;
+int dont_save_weights=0;
+int dont_save_predictions=0;
 int *labels;
 int nlabels;
 
@@ -1587,7 +1588,10 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
         }
         draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
-        save_image(im, "predictions");
+        
+        if (!dont_save_predictions) {
+			save_image(im, "predictions");
+		}
         if (!dont_show) {
             show_image(im, "predictions");
         }
@@ -1704,7 +1708,8 @@ void run_detector(int argc, char **argv)
     int save_labels = find_arg(argc, argv, "-save_labels");
     map_epochs = find_int_arg(argc, argv, "-map_epochs", 4);
     dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
-
+	dont_save_predictions = find_arg(argc, argv, "-dont_save_predictions");
+	
     if (argc < 4) {
         fprintf(stderr, "usage: %s %s [train/test/valid/demo/map] [data] [cfg] [weights (optional)]\n", argv[0], argv[1]);
         return;
