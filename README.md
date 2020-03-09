@@ -3,7 +3,7 @@
 ## Includes NNPACK for non-GPU systems and/or slow CPU, e.g., Raspberry PI.
 
 New options not in official AlexeyAB fork.
-~~- -dont_save_weights (do not save weights)~~
+- ~~-dont_save_weights (do not save weights)~~
 - -dont_save_predictions (do not save predictions.jpg)
 - -map_epochs X (compute map every X epochs)
 - -relabel 0,3,7,30 (train only selected classes. Selected labels will be internally converted to labels 0 .. n-1, change also coco.names file. On cfg file, classes in yolo layer should be modified and filter in the previous layer to yolo layer should be modified to (no. classes + 5) * 3 
