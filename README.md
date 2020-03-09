@@ -1,12 +1,12 @@
 ## Fork with updated mixing from AlexeyAB https://github.com/AlexeyAB/darknet and nnpack support from https://github.com/digitalbrain79/darknet-nnpack
 
-## Main interest is to use NNPACK on non-GPU systems and slow CPU, e.g., Raspberry PI and keep it synchronized with generic repo.
+## Includes NNPACK for non-GPU systems and/or slow CPU, e.g., Raspberry PI.
 
 New options not in official AlexeyAB fork.
-- -dont_save_weights (do not save weights)
+~~- -dont_save_weights (do not save weights)~~
 - -dont_save_predictions (do not save predictions.jpg)
 - -map_epochs X (compute map every X epochs)
-- -relabel 0,3,7,30 (use only selected labels, they will be converted to labels 0 .. n-1, change also coco.names file and cfg classes and yolo layer)
+- -relabel 0,3,7,30 (train only selected classes. Selected labels will be internally converted to labels 0 .. n-1, change also coco.names file. On cfg file, classes in yolo layer should be modified and filter in the previous layer to yolo layer should be modified to (no. classes + 5) * 3 
 
 # Yolo-v3 and Yolo-v2 for Windows and Linux
 ### (neural network for object detection) - Tensor Cores can be used on [Linux](https://github.com/AlexeyAB/darknet#how-to-compile-on-linux) and [Windows](https://github.com/AlexeyAB/darknet#how-to-compile-on-windows-using-cmake-gui)
