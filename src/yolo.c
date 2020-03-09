@@ -7,7 +7,6 @@
 #include "demo.h"
 
 char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
-int dont_save_weights = 1;
 
 void train_yolo(char *cfgfile, char *weightfile)
 {
@@ -74,7 +73,8 @@ void train_yolo(char *cfgfile, char *weightfile)
         if(i%1000==0 || (i < 1000 && i%100 == 0)){
             char buff[256];
             sprintf(buff, "%s/%s_%d.weights", backup_directory, base, i);
-	    if (!dont_save_weights) //save partial weights only if desired
+			int dont_save_weights=0;
+			if (!dont_save_weights) //save partial weights only if desired
 	            save_weights(net, buff);
         }
         free_data(train);
@@ -352,7 +352,7 @@ void run_yolo(int argc, char **argv)
     int cam_index = find_int_arg(argc, argv, "-c", 0);
     int frame_skip = find_int_arg(argc, argv, "-s", 0);
 	int ext_output = find_arg(argc, argv, "-ext_output");
-    dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
+    //int dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
 
     if(argc < 4){
         fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [weights (optional)]\n", argv[0], argv[1]);
