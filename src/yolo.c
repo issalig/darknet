@@ -6,6 +6,9 @@
 #include "box.h"
 #include "demo.h"
 
+#include <stdio.h>
+#include <sys/stat.h>
+
 char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 
 void train_yolo(char *cfgfile, char *weightfile)
@@ -16,7 +19,18 @@ void train_yolo(char *cfgfile, char *weightfile)
     char *base = basecfg(cfgfile);
     printf("%s\n", base);
     float avg_loss = -1;
+    
     network net = parse_network_cfg(cfgfile);
+    
+    struct stat sb;
+    if (stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+		printf("Backup directory (%s) does not exist! I will create for you\n", backup_directory);
+		if (stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+			printf("Could not create backup directory (%s) and set to .\n", backup_directory);
+			strcpy(backup_directory,".");
+		}
+	}
+    
     if(weightfile){
         load_weights(&net, weightfile);
     }

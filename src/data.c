@@ -180,6 +180,25 @@ matrix load_image_augment_paths(char **paths, int n, int use_flip, int min, int 
 
 extern int check_mistakes;
 
+extern int nlabels;
+extern int *labels;
+
+int label_in_list(int *labels, int id, int *new_id)
+{
+    int i;
+    int found=0;
+
+    for(i=0; i<nlabels;i++){
+	if (labels[i] == id){
+		found=1;
+                *new_id=i;
+		break;
+        }
+    }
+
+   return found;
+}
+
 box_label *read_boxes(char *filename, int *n)
 {
     box_label* boxes = (box_label*)xcalloc(1, sizeof(box_label));
@@ -203,8 +222,19 @@ box_label *read_boxes(char *filename, int *n)
     float x, y, h, w;
     int id;
     int count = 0;
+    int new_id;
     while(fscanf(file, "%d %f %f %f %f", &id, &x, &y, &w, &h) == 5){
-        boxes = (box_label*)xrealloc(boxes, (count + 1) * sizeof(box_label));
+
+        //if label not in list skip (relabel option)
+	if (labels[0] != -1) {
+	   if (label_in_list(labels, id, &new_id)){
+	      //printf("%d -> %d ",id, new_id);
+	      id = new_id;
+	   }
+	   else continue;
+        } 
+
+        boxes = (box_label*)realloc(boxes, (count + 1) * sizeof(box_label));
         boxes[count].id = id;
         boxes[count].x = x;
         boxes[count].y = y;
