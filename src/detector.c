@@ -8,6 +8,9 @@
 #include "demo.h"
 #include "option_list.h"
 
+#include <stdio.h>
+#include <sys/stat.h>
+
 #ifndef __COMPAR_FN_T
 #define __COMPAR_FN_T
 typedef int (*__compar_fn_t)(const void*, const void*);
@@ -18,7 +21,7 @@ typedef __compar_fn_t comparison_fn_t;
 
 #include "http_stream.h"
 
-int map_epochs=4;
+int map_epochs=1;
 int dont_save_predictions=0;
 int *labels;
 int nlabels;
@@ -33,6 +36,20 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     char *train_images = option_find_str(options, "train", "data/train.txt");
     char *valid_images = option_find_str(options, "valid", train_images);
     char *backup_directory = option_find_str(options, "backup", "/backup/");
+
+    struct stat sb;
+    if (!(stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
+		printf("Backup directory (%s) does not exist! I will create it for you.\n", backup_directory);
+#if defined(_WIN32)
+    _mkdir(backup_directory);
+#else 
+    mkdir(backup_directory, 0700); 
+#endif
+		if (!(stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
+			printf("Could not create backup directory (%s) and set to .\n", backup_directory);
+			strcpy(backup_directory,".");
+		}
+	}
 
     network net_map;
     if (calc_map) {
@@ -1709,7 +1726,7 @@ void run_detector(int argc, char **argv)
     // and for recall mode (extended output table-like format with results for best_class fit)
     int ext_output = find_arg(argc, argv, "-ext_output");
     int save_labels = find_arg(argc, argv, "-save_labels");
-    map_epochs = find_int_arg(argc, argv, "-map_epochs", 4);
+    map_epochs = find_int_arg(argc, argv, "-map_epochs", 1);
     int dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
 	dont_save_predictions = find_arg(argc, argv, "-dont_save_predictions");
 	
@@ -1747,7 +1764,7 @@ void run_detector(int argc, char **argv)
     char *label_list = find_char_arg(argc, argv, "-relabel", 0);
     int label = 0;
     if (label_list) {
-        printf("Label list %s\n", label_list);
+        printf("Relabel list \"%s\"\n", label_list);
         int len = strlen(label_list);
         nlabels = 1;
         int i;
@@ -1758,12 +1775,12 @@ void run_detector(int argc, char **argv)
         for (i = 0; i < nlabels; ++i) {
             labels[i] = atoi(label_list);
             label_list = strchr(label_list, ',') + 1;
-            printf("%d ", labels[i]);
+            printf("%d -> %d\n", labels[i],i);
         }
         printf("\n");
     } else {
         labels=(int*)calloc(1, sizeof(int));
-        labels[0]=-1; //all labels
+        labels[0]=-1; //all labels, normal mode
         printf("Using all labels\n");
     }
 

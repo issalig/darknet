@@ -21,16 +21,21 @@ void train_yolo(char *cfgfile, char *weightfile)
     float avg_loss = -1;
     
     network net = parse_network_cfg(cfgfile);
-    
+
     struct stat sb;
-    if (stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
-		printf("Backup directory (%s) does not exist! I will create for you\n", backup_directory);
-		if (stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    if (!(stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
+		printf("Backup directory (%s) does not exist! I will create it for you.\n", backup_directory);
+#if defined(_WIN32)
+    _mkdir(backup_directory);
+#else 
+    mkdir(backup_directory, 0700); 
+#endif
+		if (!(stat(backup_directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
 			printf("Could not create backup directory (%s) and set to .\n", backup_directory);
 			strcpy(backup_directory,".");
 		}
 	}
-    
+	
     if(weightfile){
         load_weights(&net, weightfile);
     }
@@ -95,6 +100,7 @@ void train_yolo(char *cfgfile, char *weightfile)
     }
     char buff[256];
     sprintf(buff, "%s/%s_final.weights", backup_directory, base);
+    printf("%s\n",buff);
     save_weights(net, buff);
 }
 
