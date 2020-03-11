@@ -21,7 +21,7 @@ typedef __compar_fn_t comparison_fn_t;
 
 #include "http_stream.h"
 
-int map_epochs=1;
+float map_epochs=1.0;
 int dont_save_predictions=0;
 int *labels;
 int nlabels;
@@ -298,9 +298,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         //i = get_current_batch(net);
 
         int calc_map_for_each = map_epochs * train_images_num / (net.batch * net.subdivisions);  // calculate mAP for each 4 Epochs
-	if (calc_map_for_each  < 1000) calc_map_for_each = 1000; //set minimum
+	    //if (calc_map_for_each  < 1000) calc_map_for_each = 1000; //set minimum not too low
 
-        calc_map_for_each = fmax(calc_map_for_each, 100);
+        calc_map_for_each = fmax(calc_map_for_each, 1000);
         int next_map_calc = iter_map + calc_map_for_each;
         next_map_calc = fmax(next_map_calc, net.burn_in);
         //next_map_calc = fmax(next_map_calc, 400);
@@ -1726,7 +1726,7 @@ void run_detector(int argc, char **argv)
     // and for recall mode (extended output table-like format with results for best_class fit)
     int ext_output = find_arg(argc, argv, "-ext_output");
     int save_labels = find_arg(argc, argv, "-save_labels");
-    map_epochs = find_int_arg(argc, argv, "-map_epochs", 1);
+    map_epochs = find_float_arg(argc, argv, "-map_epochs", 1);
     int dont_save_weights = find_arg(argc, argv, "-dont_save_weights");
 	dont_save_predictions = find_arg(argc, argv, "-dont_save_predictions");
 	
