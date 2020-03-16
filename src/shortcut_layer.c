@@ -250,15 +250,30 @@ void update_shortcut_layer_gpu(layer l, int batch, float learning_rate_init, flo
 
         // Loss scale for Mixed-Precision on Tensor-Cores
         if (loss_scale != 1.0) {
-            scal_ongpu(l.nweights, 1.0 / loss_scale, l.weight_updates_gpu, 1);
+            if(l.weight_updates_gpu && l.nweights > 0) scal_ongpu(l.nweights, 1.0 / loss_scale, l.weight_updates_gpu, 1);
         }
 
         reset_nan_and_inf(l.weight_updates_gpu, l.nweights);
         fix_nan_and_inf(l.weights_gpu, l.nweights);
 
-        axpy_ongpu(l.nweights, -decay*batch, l.weights_gpu, 1, l.weight_updates_gpu, 1);
+        //constrain_weight_updates_ongpu(l.nweights, 1, l.weights_gpu, l.weight_updates_gpu);
+        constrain_ongpu(l.nweights, 1, l.weight_updates_gpu, 1);
+
+        /*
+        cuda_pull_array_async(l.weights_gpu, l.weights, l.nweights);
+        cuda_pull_array_async(l.weight_updates_gpu, l.weight_updates, l.nweights);
+        CHECK_CUDA(cudaStreamSynchronize(get_cuda_stream()));
+        for (int i = 0; i < l.nweights; ++i) printf(" %f, ", l.weight_updates[i]);
+        printf(" l.nweights = %d - updates \n", l.nweights);
+        for (int i = 0; i < l.nweights; ++i) printf(" %f, ", l.weights[i]);
+        printf(" l.nweights = %d \n\n", l.nweights);
+        */
+
+        //axpy_ongpu(l.nweights, -decay*batch, l.weights_gpu, 1, l.weight_updates_gpu, 1);
         axpy_ongpu(l.nweights, learning_rate / batch, l.weight_updates_gpu, 1, l.weights_gpu, 1);
         scal_ongpu(l.nweights, momentum, l.weight_updates_gpu, 1);
+
+        //fill_ongpu(l.nweights, 0, l.weight_updates_gpu, 1);
 
         //if (l.clip) {
         //    constrain_ongpu(l.nweights, l.clip, l.weights_gpu, 1);
@@ -268,6 +283,8 @@ void update_shortcut_layer_gpu(layer l, int batch, float learning_rate_init, flo
 
 void pull_shortcut_layer(layer l)
 {
+    constrain_ongpu(l.nweights, 1, l.weight_updates_gpu, 1);
+    cuda_pull_array_async(l.weight_updates_gpu, l.weight_updates, l.nweights);
     cuda_pull_array_async(l.weights_gpu, l.weights, l.nweights);
     CHECK_CUDA(cudaPeekAtLastError());
     CHECK_CUDA(cudaStreamSynchronize(get_cuda_stream()));

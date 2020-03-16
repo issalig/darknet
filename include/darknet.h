@@ -327,6 +327,8 @@ struct layer {
 
     int onlyforward;
     int stopbackward;
+    int dont_update;
+    int burnin_update;
     int dontload;
     int dontsave;
     int dontloadscales;

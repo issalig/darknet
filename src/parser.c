@@ -1101,8 +1101,10 @@ void parse_net_options(list *options, network *net)
 #ifdef GPU
     if (net->gpu_index >= 0) {
         int compute_capability = get_gpu_compute_capability(net->gpu_index);
-        if (get_gpu_compute_capability(net->gpu_index) >= 700) net->cudnn_half = 1;
+#ifdef CUDNN_HALF
+        if (compute_capability >= 700) net->cudnn_half = 1;
         else net->cudnn_half = 0;
+#endif// CUDNN_HALF
         fprintf(stderr, " compute_capability = %d, cudnn_half = %d \n", compute_capability, net->cudnn_half);
     }
     else fprintf(stderr, " GPU isn't used \n");
@@ -1365,6 +1367,8 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
         l.clip = option_find_float_quiet(options, "clip", 0);
         l.dynamic_minibatch = net.dynamic_minibatch;
         l.onlyforward = option_find_int_quiet(options, "onlyforward", 0);
+        l.dont_update = option_find_int_quiet(options, "dont_update", 0);
+        l.burnin_update = option_find_int_quiet(options, "burnin_update", 0);
         l.stopbackward = option_find_int_quiet(options, "stopbackward", 0);
         l.dontload = option_find_int_quiet(options, "dontload", 0);
         l.dontloadscales = option_find_int_quiet(options, "dontloadscales", 0);
@@ -1556,8 +1560,15 @@ void save_shortcut_weights(layer l, FILE *fp)
 #ifdef GPU
     if (gpu_index >= 0) {
         pull_shortcut_layer(l);
+        printf("\n pull_shortcut_layer \n");
     }
 #endif
+    int i;
+    for (i = 0; i < l.nweights; ++i) printf(" %f, ", l.weight_updates[i]);
+    printf(" l.nweights = %d - update \n", l.nweights);
+    for (i = 0; i < l.nweights; ++i) printf(" %f, ", l.weights[i]);
+    printf(" l.nweights = %d \n\n", l.nweights);
+
     int num = l.nweights;
     fwrite(l.weights, sizeof(float), num, fp);
 }
@@ -1633,7 +1644,7 @@ void save_weights_upto(network net, char *filename, int cutoff)
     fwrite(&major, sizeof(int), 1, fp);
     fwrite(&minor, sizeof(int), 1, fp);
     fwrite(&revision, sizeof(int), 1, fp);
-    (*net.seen) = (*net.cur_iteration) * net.batch * net.subdivisions;
+    //(*net.seen) = (*net.cur_iteration) * net.batch * net.subdivisions;
     fwrite(net.seen, sizeof(uint64_t), 1, fp);
 
     int i;
@@ -1843,7 +1854,7 @@ void load_shortcut_weights(layer l, FILE *fp)
     read_bytes = fread(l.weights, sizeof(float), num, fp);
     if (read_bytes > 0 && read_bytes < num) printf("\n Warning: Unexpected end of wights-file! l.weights - l.index = %d \n", l.index);
     //for (int i = 0; i < l.nweights; ++i) printf(" %f, ", l.weights[i]);
-    //printf("\n\n");
+    //printf(" read_bytes = %d \n\n", read_bytes);
 #ifdef GPU
     if (gpu_index >= 0) {
         push_shortcut_layer(l);
